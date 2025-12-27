@@ -1,15 +1,22 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { Program, FilterState } from "../types";
-
-// Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Generates an AI consultation analysis based on user filters and search results.
  */
 export const getAiConsultation = async (filters: FilterState, programs: Program[]) => {
-  // Use correct properties from FilterState for ranking: minRank and maxRank
+  // 遵循规则：在调用前实例化，确保获取最新的 API_KEY 并防止顶级作用域错误
+  // 即使 process.env.API_KEY 未定义，报错也会被 try-catch 捕获，而不会导致整个 App 白屏
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  
+  if (!apiKey) {
+    console.error("API_KEY is missing. AI features will not work.");
+    return "系统配置错误：未检测到有效的 API 密钥，请检查环境变量设置。";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   const prompt = `
     作为一名资深留学咨询顾问，请根据以下用户的筛选条件和搜索到的大学项目，给出一个专业的选校分析建议。
     
@@ -31,16 +38,13 @@ export const getAiConsultation = async (filters: FilterState, programs: Program[
   `;
 
   try {
-    // Using gemini-3-flash-preview for the consultation text task.
-    // Use ai.models.generateContent directly with model name and contents.
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    // Use the .text property to access the generated content as a string.
     return response.text;
   } catch (error) {
     console.error("AI Consultation Error:", error);
-    return "抱歉，AI 顾问暂时无法连接。请稍后再试。";
+    return "抱歉，AI 顾问暂时无法连接（可能是 API 密钥无效或网络波动）。请稍后再试。";
   }
 };
